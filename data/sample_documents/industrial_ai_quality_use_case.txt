@@ -1,0 +1,20 @@
+Industrial AI Use Case Proposal: Visual Quality Inspection
+
+Objective:
+The manufacturing quality team wants to reduce manual inspection effort and detect surface defects earlier in the production process. The proposed solution is an AI-assisted visual inspection workflow that classifies product images into accepted, minor defect, and major defect categories.
+
+Inputs and data sources:
+The system requires labelled product images from the production line, defect category definitions, inspection results from quality engineers, and metadata such as product type, timestamp, batch number, and production station. Historical defect reports can be used to validate whether image-based predictions match known quality issues.
+
+Expected output:
+The prototype should produce a defect classification result, confidence score, visual examples for review, and a summary report for quality engineers. The dashboard should show defect trends, model confidence, and examples that need human review.
+
+Risks and limitations:
+The main risks are poor image quality, inconsistent labels, class imbalance, and changes in lighting conditions. If the training data does not represent real production variation, the model may perform well in testing but fail in deployment. Human review is required for low-confidence predictions.
+
+Evaluation:
+The prototype should be evaluated using accuracy, F1-score, confusion matrix, false negative rate, and stability across production batches. A baseline should be defined using current manual inspection results. Data leakage between training and test sets must be avoided.
+
+Recommendation:
+Start with a controlled pilot using one product family and a limited set of defect classes. Validate data quality, define clear KPIs, and compare the AI workflow against the current manual inspection process before expanding to more products.
+

@@ -1,0 +1,20 @@
+Medical AI Use Case Proposal: Clinical Documentation Support
+
+Objective:
+A healthcare software team wants to explore whether AI can support clinicians by structuring notes, extracting action items, and summarising patient-related documentation. The goal is to reduce repetitive documentation work while keeping clinicians in control of final review.
+
+Inputs and data sources:
+The prototype uses anonymised clinical note examples, workflow descriptions, and documentation guidelines. It should not store sensitive patient information. Any deployment would require strict privacy, security, and compliance review.
+
+Expected output:
+The assistant should extract key findings, follow-up actions, missing information, and a concise summary. It should show the source evidence behind every extracted item and flag uncertain outputs for human review.
+
+Risks and limitations:
+Clinical text may be ambiguous or incomplete. The assistant must avoid unsupported medical claims and should not make diagnosis or treatment decisions. Hallucination risk, privacy risk, and missing context are critical concerns.
+
+Evaluation:
+The prototype should be evaluated using source grounding, completeness, consistency, human review feedback, and error analysis. Outputs should be compared against expected fields prepared by domain experts.
+
+Recommendation:
+Use the assistant only as a documentation support prototype. Keep human review mandatory, document limitations clearly, and evaluate performance on realistic but anonymised sample documents before considering broader use.
+

@@ -1,0 +1,20 @@
+Generative AI Use Case Proposal: Cost Engineering Decision Support
+
+Objective:
+The cost engineering team wants to evaluate whether Generative AI can help structure supplier information, technical descriptions, and cost-related assumptions into a decision-support workflow. The goal is not to automate final decisions, but to reduce manual document review and make relevant information easier to compare.
+
+Inputs and data sources:
+Potential inputs include supplier quotations, technical specifications, cost breakdown notes, market indicators, historical benchmark data, and engineering assumptions. The system should identify which information is available, which information is missing, and which data points need validation by a cost engineer.
+
+Expected output:
+The assistant should generate a structured summary, list of assumptions, risks, missing information, and recommended next steps. It should also export a comparison table that can be reviewed by engineering, purchasing, and controlling stakeholders.
+
+Risks and limitations:
+Generative AI may create unsupported statements if source grounding is weak. Supplier documents may contain inconsistent formats and incomplete cost details. Recommendations must be traceable to source evidence and reviewed by a human before business decisions are made.
+
+Evaluation:
+The prototype should be evaluated based on completeness of extracted information, consistency of output format, grounding in source documents, usefulness for stakeholders, and reduction in manual review effort. A human review flag should be used when evidence is weak.
+
+Recommendation:
+Build a small prototype with a limited set of sample documents. Focus first on structured extraction, traceability, and evaluation before expanding to more complex pricing or cost prediction workflows.
+

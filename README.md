@@ -29,6 +29,20 @@ Many simple RAG projects stop at “chat with a PDF.” This project adds practi
 - answer evaluation and human-review flags
 - exportable reports
 
+## Screenshots
+
+### Upload and Study Library
+![Upload and Study Library](assets/screenshots/01-upload-library.png)
+
+### PDF Preview
+![PDF Preview](assets/screenshots/02-pdf-preview.png)
+
+### Source-Grounded Assistant
+![Source-Grounded Assistant](assets/screenshots/03-assistant-summary.png)
+
+### Evaluation Dashboard
+![Evaluation Dashboard](assets/screenshots/04-evaluation-dashboard.png)
+
 ## Analysis Modes
 
 The app includes four modes. The mode guides the answer style, while the user can still type any question.

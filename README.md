@@ -32,16 +32,16 @@ Many simple RAG projects stop at “chat with a PDF.” This project adds practi
 ## Screenshots
 
 ### Upload and Study Library
-![Upload and Study Library](assets/screenshots/01-upload-library.png)
+![Upload and Study Library](assets/screenshots/upload-library.png)
 
 ### PDF Preview
-![PDF Preview](assets/screenshots/02-pdf-preview.png)
+![PDF Preview](assets/screenshots/pdf-preview.png)
 
 ### Source-Grounded Assistant
-![Source-Grounded Assistant](assets/screenshots/03-assistant-summary.png)
+![Source-Grounded Assistant](assets/screenshots/assistant-summary.png)
 
 ### Evaluation Dashboard
-![Evaluation Dashboard](assets/screenshots/04-evaluation-dashboard.png)
+![Evaluation Dashboard](assets/screenshots/evaluation-dashboard.png)
 
 ## Analysis Modes
 

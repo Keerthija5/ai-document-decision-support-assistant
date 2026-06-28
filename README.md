@@ -1,33 +1,35 @@
 # AI-Powered Document Intelligence & Decision Support Assistant
 
-A Streamlit-based document assistant for PDF/TXT/Markdown files. It combines document upload, PDF page preview, extracted-text navigation, source-grounded question answering, study summaries, decision-support insights, answer evaluation, and exportable reports.
+I built this project as a practical document assistant for working with PDFs, lecture notes, and use-case documents. The first idea was simple: I wanted an app where I could upload a document, preview it, ask questions from it, and get answers that stay connected to the source instead of giving random unsupported text.
 
-This project is designed as a practical AI workflow rather than a notebook-only demo. Version 1 focuses on a reliable local prototype with explainable retrieval and transparent evaluation.
+While building it, I added more practical layers around the basic "ask a PDF" idea: document overview, page preview, study summaries, decision-support modes, answer evaluation, and exportable reports. My goal was to make it useful for both study material and workplace-style documents such as AI use-case proposals, research notes, and business decision documents.
+
+This is a local Streamlit prototype. It does not use a paid LLM API in the current version, so the logic is kept transparent and easy to inspect.
 
 ## What It Does
 
 - Upload PDF, TXT, or Markdown documents.
-- Preview uploaded PDF pages as rendered images inside the app.
-- View extracted text page by page for copying and verification.
-- Keep a local study library of recent documents.
-- Ask document-grounded questions using retrieval over text chunks.
-- Route questions by intent, such as brief summary, whole summary, study topics, page navigation, risks, recommendations, and evaluation.
-- Use analysis modes for Study Notes, Industrial AI / Quality, Research Paper, and Business Decision workflows.
-- Generate structured decision insights, missing-information checks, and a decision matrix.
-- Evaluate generated answers for relevance, completeness, grounding, consistency, and hallucination risk.
-- Export reports as JSON, CSV, or Markdown.
+- Preview uploaded PDF pages inside the app.
+- View extracted text page by page for checking and copying.
+- Keep a small local study library of recently processed documents.
+- Ask questions using source-grounded retrieval over document chunks.
+- Generate brief summaries, whole-document summaries, important topics, and beginner explanations.
+- Switch between Study Notes, Industrial AI / Quality, Research Paper, and Business Decision modes.
+- Extract structured decision insights such as risks, requirements, recommendations, and missing information.
+- Evaluate answers for relevance, completeness, grounding, consistency, and hallucination risk.
+- Export outputs as JSON, CSV, or Markdown reports.
 
-## Why This Project
+## Why I Built It
 
-Many simple RAG projects stop at “chat with a PDF.” This project adds practical layers that are useful in study and workplace settings:
+I wanted this project to feel closer to a practical AI tool than a notebook experiment. In real use, just getting an answer is not enough. I also wanted to know:
 
-- source traceability through retrieved chunks
-- document overview, PDF page preview, and page-level extracted text
-- intent-aware answer behaviour
-- study summaries and exam-oriented explanations
-- decision-support outputs for business or industrial use cases
-- answer evaluation and human-review flags
-- exportable reports
+- Which part of the document the answer came from.
+- Whether the answer is actually grounded in the uploaded file.
+- Whether a diagram or page should be checked manually.
+- What the document is mainly about before asking detailed questions.
+- How the same assistant could support study, research, and business-style analysis.
+
+That is why the app includes source chunks, PDF preview, extracted page text, document-level summaries, and an evaluation dashboard.
 
 ## Screenshots
 
@@ -43,16 +45,16 @@ Many simple RAG projects stop at “chat with a PDF.” This project adds practi
 ### Evaluation Dashboard
 ![Evaluation Dashboard](assets/screenshots/evaluation-dashboard.png)
 
-## Analysis Modes
+## Main Modes
 
-The app includes four modes. The mode guides the answer style, while the user can still type any question.
+The app has four analysis modes. The mode changes the answer style and what the assistant focuses on.
 
-- **Study Notes:** summaries, whole-document explanations, important topics, beginner explanations, page navigation, and exam preparation.
-- **Industrial AI / Quality:** risks, data requirements, KPIs, pilot readiness, validation, and quality-review points.
+- **Study Notes:** lecture summaries, beginner explanations, important topics, page navigation, and exam revision.
+- **Industrial AI / Quality:** risks, data requirements, KPIs, validation points, and pilot-readiness checks.
 - **Research Paper:** problem, method, dataset, experiments, results, limitations, and future work.
-- **Business Decision:** stakeholders, inputs/outputs, benefits, risks, dependencies, and next actions.
+- **Business Decision:** stakeholders, inputs, outputs, risks, dependencies, recommendations, and next actions.
 
-## Workflow
+## How It Works
 
 ```text
 Upload document
@@ -63,16 +65,28 @@ Create overlapping text chunks
       |
 Build TF-IDF retrieval index
       |
-Classify user question intent
+Detect the question intent
       |
 Retrieve relevant source chunks
       |
-Generate mode-aware answer
+Generate a mode-aware answer
       |
 Evaluate answer quality
       |
-Show sources, dashboard, and exports
+Show answer, sources, dashboard, and exports
 ```
+
+## Evaluation Layer
+
+I added a simple evaluation layer because document assistants can easily sound confident even when the answer is weak. The dashboard checks:
+
+- **Relevance:** how well the answer matches the question.
+- **Completeness:** whether important expected points are missing.
+- **Grounding:** whether the answer is supported by retrieved document text.
+- **Consistency:** whether the answer format is stable and clear.
+- **Hallucination risk:** a warning signal when the answer is not strongly supported.
+
+This does not replace human review, but it helps decide when the output should be checked more carefully.
 
 ## Tech Stack
 
@@ -83,8 +97,6 @@ Show sources, dashboard, and exports
 - NumPy
 - pypdf for text extraction
 - pypdfium2 for PDF page preview
-
-The first version is intentionally local and explainable. It does not require a paid LLM API. Future versions can add embeddings, vector databases, and API-based LLM generation.
 
 ## Project Structure
 
@@ -103,7 +115,7 @@ src/
   exporter.py
 ```
 
-Runtime folders such as `.app_cache/`, `static/pdf_cache/`, and `outputs/` are ignored by Git because they may contain uploaded private documents or generated files.
+Runtime folders such as `.app_cache/`, `static/pdf_cache/`, and `outputs/` are ignored by Git because they may contain uploaded documents or generated files.
 
 ## Run Locally
 
@@ -114,7 +126,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Example Questions
+## Example Questions I Tested
 
 Study:
 
@@ -143,36 +155,24 @@ Business Decision:
 - What are the benefits, risks, and dependencies?
 - What should be validated before implementation?
 
-## Evaluation Logic
-
-The app includes a transparent evaluation layer:
-
-- **Relevance:** overlap between the question and answer.
-- **Completeness:** checks whether expected information is missing.
-- **Grounding:** overlap between the answer and retrieved source chunks.
-- **Consistency:** basic output-quality check.
-- **Hallucination risk:** derived from grounding and average quality.
-
-This is not a replacement for expert review. It is a first-level quality signal that helps decide when human review is needed.
-
 ## Current Limitations
 
-- Retrieval uses TF-IDF, not dense semantic embeddings.
-- Answer generation is rule-based and template-guided in Version 1.
-- PDF extraction depends on the quality of the source PDF.
-- Image-only diagrams may not be fully understood; the app shows a diagram/manual-review note where relevant.
-- Domain-specific modes can be improved further with stronger templates and evaluation logic.
+- Retrieval currently uses TF-IDF instead of dense semantic embeddings.
+- Answer generation is rule-based and template-guided in this version.
+- PDF extraction depends on the quality of the uploaded PDF.
+- Image-only diagrams cannot always be understood from text extraction alone, so the app adds a manual-review note where needed.
+- The domain modes can still be improved with stronger templates and better evaluation logic.
 
 ## Future Improvements
 
 - Add embedding-based retrieval with FAISS or Chroma.
-- Add optional LLM generation with prompt templates and citations.
+- Add optional LLM generation with stricter citations.
 - Add multi-document search across a full subject folder.
-- Add flashcards, quiz generation, and exam mode.
-- Add better research-paper and industrial-quality templates.
-- Add user accounts or deployment for phone/laptop access.
+- Add flashcards, quiz generation, and exam-preparation mode.
+- Improve research-paper and industrial-quality templates.
+- Add a cleaner deployment version for laptop or phone access.
 - Export polished PDF reports.
 
-## Resume Bullet
+## Resume Summary
 
-Built a Streamlit-based document intelligence assistant that processes PDF/TXT/Markdown files, extracts and chunks document text, retrieves source-grounded context, and generates intent-aware answers across study, research, quality, and business-decision modes. Added PDF page preview, local study library, whole-document summaries, page-level extracted text navigation, answer evaluation, hallucination-risk indicators, and exportable JSON/CSV/Markdown reports.
+Built a Streamlit-based document intelligence assistant for PDF/TXT/Markdown files with source-grounded retrieval, PDF preview, extracted page text, local study library, study and decision-support modes, answer-quality evaluation, hallucination-risk indicators, and exportable JSON/CSV/Markdown reports.

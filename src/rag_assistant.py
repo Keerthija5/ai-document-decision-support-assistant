@@ -43,8 +43,10 @@ def _detect_intent(question: str) -> set[str]:
         intent.add("explanation")
     if any(term in lower for term in ("risk", "challenge", "limitation", "issue")):
         intent.add("risks")
-    if any(term in lower for term in ("recommend", "next step", "action", "should")):
+    if any(term in lower for term in ("recommend", "next step", "action")):
         intent.add("recommendations")
+    if any(term in lower for term in ("goal", "objective", "purpose")):
+        intent.add("objective")
     if "explanation" not in intent and any(term in lower for term in ("data", "input", "source")):
         intent.add("data")
     if any(term in lower for term in ("metric", "evaluate", "evaluation", "kpi", "test")):
@@ -53,6 +55,15 @@ def _detect_intent(question: str) -> set[str]:
 
 
 def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> str:
+    if "objective" in intent:
+        objective_sentences = _select_by_terms(
+            sentences,
+            ("goal", "objective", "reduce", "support", "help"),
+        )
+        if objective_sentences:
+            return "Objective: " + " ".join(
+                _clean_sentence(sentence) for sentence in objective_sentences[:2]
+            )
     if "explanation" in intent:
         return _compose_explanation(question, sentences)
 
@@ -61,6 +72,7 @@ def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> st
         "recommendations": _select_recommendations(sentences),
         "data": _select_by_terms(sentences, ("data", "input", "source", "image", "metadata", "dataset")),
         "evaluation": _select_by_terms(sentences, ("evaluate", "metric", "accuracy", "f1", "matrix", "baseline", "test", "leakage")),
+        "objective": _select_by_terms(sentences, ("goal", "objective", "reduce", "support", "help")),
     }
 
     sections = []
@@ -72,6 +84,8 @@ def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> st
         sections.append("Required data: " + " ".join(_clean_sentence(sentence) for sentence in groups["data"][:2]))
     if "evaluation" in intent and groups["evaluation"]:
         sections.append("Evaluation approach: " + " ".join(_clean_sentence(sentence) for sentence in groups["evaluation"][:2]))
+    if "objective" in intent and groups["objective"]:
+        sections.append("Objective: " + " ".join(_clean_sentence(sentence) for sentence in groups["objective"][:2]))
 
     if sections:
         return "\n\n".join(sections)
@@ -101,7 +115,12 @@ def _compose_explanation(question: str, sentences: list[str]) -> str:
 
 
 def _rank_sentences(question: str, chunks: list[RetrievedChunk]) -> list[str]:
-    query_terms = _expand_query_terms({term.lower() for term in re.findall(r"[A-Za-z][A-Za-z\-]+", question)})
+    raw_query_terms = [
+        _normalise_ranking_term(term)
+        for term in re.findall(r"[A-Za-z]+", question.lower())
+    ]
+    query_terms = _expand_query_terms(set(raw_query_terms))
+    query_bigrams = set(zip(raw_query_terms, raw_query_terms[1:]))
     candidates: list[tuple[int, str]] = []
     seen_terms: list[set[str]] = []
     for chunk in chunks:
@@ -109,12 +128,17 @@ def _rank_sentences(question: str, chunks: list[RetrievedChunk]) -> list[str]:
             clean = sentence.strip()
             if len(clean.split()) < 5:
                 continue
-            terms = {term.lower() for term in re.findall(r"[A-Za-z][A-Za-z\-]+", clean)}
+            ordered_terms = [
+                _normalise_ranking_term(term)
+                for term in re.findall(r"[A-Za-z]+", clean.lower())
+            ]
+            terms = set(ordered_terms)
             if _is_near_duplicate(terms, seen_terms):
                 continue
             seen_terms.append(terms)
             overlap = len(query_terms & terms)
-            candidates.append((overlap, clean))
+            bigram_overlap = len(query_bigrams & set(zip(ordered_terms, ordered_terms[1:])))
+            candidates.append((overlap * 2 + bigram_overlap * 3, clean))
     candidates.sort(key=lambda item: (item[0], len(item[1])), reverse=True)
     return [sentence for score, sentence in candidates if score > 0] or [sentence for _, sentence in candidates[:4]]
 
@@ -293,6 +317,16 @@ def _expand_query_terms(terms: set[str]) -> set[str]:
     for term in list(terms):
         expanded.update(synonyms.get(term, set()))
     return expanded
+
+
+def _normalise_ranking_term(term: str) -> str:
+    if len(term) > 5 and term.endswith("ing"):
+        return term[:-3]
+    if len(term) > 4 and term.endswith("ed"):
+        return term[:-2]
+    if len(term) > 4 and term.endswith("s"):
+        return term[:-1]
+    return term
 
 
 def _is_near_duplicate(terms: set[str], seen_terms: list[set[str]], threshold: float = 0.72) -> bool:

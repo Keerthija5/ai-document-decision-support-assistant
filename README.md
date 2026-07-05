@@ -1,123 +1,136 @@
 # AI-Powered Document Intelligence & Decision Support Assistant
 
-I built this project as a practical document assistant for working with PDFs, lecture notes, and use-case documents. The first idea was simple: I wanted an app where I could upload a document, preview it, ask questions from it, and get answers that stay connected to the source instead of giving random unsupported text.
+I started this project because I wanted a better way to work through long lecture PDFs. Finding a sentence was not enough: I wanted to ask a question, see the source behind the answer, and know when the document did not contain enough evidence.
 
-While building it, I added more practical layers around the basic "ask a PDF" idea: document overview, page preview, study summaries, decision-support modes, answer evaluation, and exportable reports. My goal was to make it useful for both study material and workplace-style documents such as AI use-case proposals, research notes, and business decision documents.
+The project grew into a local document-analysis prototype for study material and workplace-style documents. It now has a Streamlit interface, a reusable Python service, a REST API, answer-quality checks, local feedback collection, a regression benchmark, tests, Docker support, and CI.
 
-This is a local Streamlit prototype. It does not use a paid LLM API in the current version, so the logic is kept transparent and easy to inspect.
+The current version deliberately uses transparent TF-IDF retrieval and extractive, template-guided answers. It does not call a hosted LLM API, so documents stay local and the answer path is easier to inspect.
+
+## The Problem It Tries to Solve
+
+Students often have several lecture files and limited revision time. A normal search can find matching words, while a general chatbot may answer confidently without showing whether the answer came from the uploaded notes.
+
+This assistant is designed around three practical questions:
+
+1. Can I find the relevant part of a document quickly?
+2. Can I verify the answer against its source?
+3. Will the system refuse a question when the document does not support it?
+
+The same workflow can also be used to inspect AI use-case proposals, research notes, and business decision documents.
 
 ## What It Does
 
-- Upload PDF, TXT, or Markdown documents.
-- Preview uploaded PDF pages inside the app.
-- View extracted text page by page for checking and copying.
-- Keep a small local study library of recently processed documents.
-- Ask questions using source-grounded retrieval over document chunks.
-- Generate brief summaries, whole-document summaries, important topics, and beginner explanations.
-- Switch between Study Notes, Industrial AI / Quality, Research Paper, and Business Decision modes.
-- Extract structured decision insights such as risks, requirements, recommendations, and missing information.
-- Evaluate answers for relevance, completeness, grounding, consistency, and hallucination risk.
-- Export outputs as JSON, CSV, or Markdown reports.
-
-## Why I Built It
-
-I wanted this project to feel closer to a practical AI tool than a notebook experiment. In real use, just getting an answer is not enough. I also wanted to know:
-
-- Which part of the document the answer came from.
-- Whether the answer is actually grounded in the uploaded file.
-- Whether a diagram or page should be checked manually.
-- What the document is mainly about before asking detailed questions.
-- How the same assistant could support study, research, and business-style analysis.
-
-That is why the app includes source chunks, PDF preview, extracted page text, document-level summaries, and an evaluation dashboard.
+- Uploads PDF, TXT, and Markdown documents with type, size, and readable-text validation.
+- Previews PDF pages and extracted page text.
+- Keeps a small local library of recently processed documents.
+- Splits text into overlapping chunks and retrieves evidence with TF-IDF.
+- Checks whether meaningful concepts from the question are supported by the document.
+- Refuses unsupported questions instead of returning the nearest unrelated paragraph.
+- Provides Study Notes, Industrial AI / Quality, Research Paper, and Business Decision modes.
+- Extracts risks, requirements, recommendations, action items, and missing information.
+- Evaluates relevance, completeness, grounding, consistency, and review risk.
+- Stores helpful / not-helpful feedback and optional corrections in local SQLite.
+- Exports JSON, CSV, and Markdown reports.
+- Exposes ingestion, query, evaluation, insight, and feedback endpoints through FastAPI.
 
 ## Screenshots
 
 ### Upload and Study Library
-![Upload and Study Library](assets/screenshots/upload-library.png)
+![Upload and Study Library](assets/screenshots/upload-and-study-library.png)
 
-### PDF Preview
-![PDF Preview](assets/screenshots/pdf-preview.png)
+### PDF Preview and Extracted Text
+![PDF Preview and Extracted Text](assets/screenshots/pdf-preview-and-extracted-text.png)
 
-### Source-Grounded Assistant
-![Source-Grounded Assistant](assets/screenshots/assistant-summary.png)
+### Source-Grounded Answer
+![Source-Grounded Answer](assets/screenshots/source-grounded-answer.png)
+
+### Unsupported-Question Refusal
+![Unsupported-Question Refusal](assets/screenshots/unsupported-question-refusal.png)
 
 ### Evaluation Dashboard
 ![Evaluation Dashboard](assets/screenshots/evaluation-dashboard.png)
 
-## Main Modes
+### Local User Feedback
+![Local User Feedback](assets/screenshots/local-user-feedback-confirmation.png)
 
-The app has four analysis modes. The mode changes the answer style and what the assistant focuses on.
-
-- **Study Notes:** lecture summaries, beginner explanations, important topics, page navigation, and exam revision.
-- **Industrial AI / Quality:** risks, data requirements, KPIs, validation points, and pilot-readiness checks.
-- **Research Paper:** problem, method, dataset, experiments, results, limitations, and future work.
-- **Business Decision:** stakeholders, inputs, outputs, risks, dependencies, recommendations, and next actions.
+### FastAPI Documentation
+![FastAPI Swagger Documentation](assets/screenshots/fastapi-swagger-documentation.png)
 
 ## How It Works
 
 ```text
-Upload document
-      |
-Extract text from PDF/TXT/MD
-      |
-Create overlapping text chunks
-      |
-Build TF-IDF retrieval index
-      |
-Detect the question intent
-      |
-Retrieve relevant source chunks
-      |
-Generate a mode-aware answer
-      |
-Evaluate answer quality
-      |
-Show answer, sources, dashboard, and exports
+Document
+   |
+Validation and text extraction
+   |
+Overlapping text chunks
+   |
+TF-IDF retrieval index
+   |
+Question support check
+   |-------------------- unsupported -> refusal + review flag
+   |
+Intent-aware extractive answer
+   |
+Grounding and quality evaluation
+   |
+Sources, feedback, insights, and exports
 ```
 
-## Evaluation Layer
+The Streamlit app and API share the same configuration and core processing modules. Operational logs include IDs, counts, latency, and review status, but not document contents.
 
-I added a simple evaluation layer because document assistants can easily sound confident even when the answer is weak. The dashboard checks:
+## Controlled Evaluation
 
-- **Relevance:** how well the answer matches the question.
-- **Completeness:** whether important expected points are missing.
-- **Grounding:** whether the answer is supported by retrieved document text.
-- **Consistency:** whether the answer format is stable and clear.
-- **Hallucination risk:** a warning signal when the answer is not strongly supported.
+I created a small golden dataset with 21 questions across three included sample documents:
 
-This does not replace human review, but it helps decide when the output should be checked more carefully.
+- 18 answerable questions
+- 3 intentionally unanswerable questions
+- industrial visual inspection, cost engineering, and clinical documentation examples
 
-## Tech Stack
+The current regression run achieved:
 
-- Python
-- Streamlit
-- scikit-learn TF-IDF retrieval
-- Pandas
-- NumPy
-- pypdf for text extraction
-- pypdfium2 for PDF page preview
+| Check | Result |
+|---|---:|
+| Overall pass rate | 21/21 |
+| Retrieval hit rate | 18/18 |
+| Correct refusal rate | 3/3 |
+| Mean expected-keyword coverage | 100% |
+| Mean grounding score | 67.33/100 |
 
-## Project Structure
+These numbers are useful for catching regressions in the included examples. They are not a claim of 100% accuracy on unseen documents or real users. The dataset and recorded result are available in `evaluation_data/`.
 
-```text
-app.py
-requirements.txt
-.streamlit/config.toml
-data/sample_documents/
-src/
-  document_loader.py
-  text_chunker.py
-  retriever.py
-  rag_assistant.py
-  insight_extractor.py
-  evaluator.py
-  exporter.py
+Run the benchmark with:
+
+```bash
+python run_evaluation.py
 ```
 
-Runtime folders such as `.app_cache/`, `static/pdf_cache/`, and `outputs/` are ignored by Git because they may contain uploaded documents or generated files.
+## REST API
 
-## Run Locally
+Start the API:
+
+```bash
+uvicorn api:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` for the interactive endpoint documentation.
+
+Main endpoints:
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Service and retrieval status |
+| `POST` | `/documents/text` | Ingest pasted text |
+| `POST` | `/documents/upload` | Upload PDF, TXT, or Markdown |
+| `GET` | `/documents/{id}/insights` | Structured decision insights |
+| `POST` | `/query` | Answer with sources and support evidence |
+| `POST` | `/evaluate` | Return answer-quality metrics |
+| `POST` | `/feedback` | Store a local rating or correction |
+| `GET` | `/feedback/summary` | Summarise collected feedback |
+
+Documents are held in memory for the current API process. This keeps the prototype simple, but it means document IDs do not survive an API restart.
+
+## Run the Streamlit App
 
 ```bash
 python3 -m venv .venv
@@ -126,53 +139,70 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Example Questions I Tested
+## Tests
 
-Study:
+```bash
+pytest -q
+```
 
-- Give me a brief summary of the whole PDF.
-- Give me the whole summary of the PDF.
-- What are the important topics I have to cover?
-- Explain this topic like I am a beginner.
-- Which page contains this topic?
+The tests cover input validation, grounded queries, unsupported-question refusal, feedback storage, the evaluation dataset, and the API workflow. GitHub Actions runs compilation and tests after pushes and pull requests.
 
-Industrial AI / Quality:
+## Docker
 
-- What are the key risks and recommended next steps?
-- What data is required for this use case?
-- How should this prototype be evaluated?
-- Which information is missing before a pilot?
+The included Dockerfile runs the API:
 
-Research:
+```bash
+docker build -t document-intelligence-api .
+docker run --rm -p 8000:8000 document-intelligence-api
+```
 
-- What is the problem, method, result, and limitation?
-- What datasets or experiments are mentioned?
-- Which claims need stronger evidence?
+## Project Structure
 
-Business Decision:
+```text
+app.py                         Streamlit interface
+api.py                         FastAPI endpoints
+run_evaluation.py              Golden-set benchmark runner
+evaluation_data/               Questions and recorded benchmark result
+data/sample_documents/         Non-sensitive evaluation documents
+tests/                         Unit and API tests
+src/
+  config.py                    Environment-based settings
+  document_loader.py           PDF/TXT/Markdown extraction
+  text_chunker.py              Overlapping chunk creation
+  retriever.py                 TF-IDF retrieval
+  rag_assistant.py             Intent-aware extractive answers
+  service.py                   Reusable document workflow
+  validation.py                Input and question-support checks
+  evaluator.py                 Answer-quality checks
+  insight_extractor.py         Structured decision fields
+  feedback_store.py            Local SQLite feedback
+  logging_config.py            Privacy-aware operational logging
+  exporter.py                  JSON/CSV/Markdown reports
+```
 
-- What decision is being supported?
-- What are the benefits, risks, and dependencies?
-- What should be validated before implementation?
+## Planned User Study
+
+The next step is a small study with 5–10 students using non-sensitive lecture PDFs. I want to measure task time, source retrieval, unsupported-question refusal, helpfulness, corrections, and confidence after source verification.
+
+The complete plan and five-question survey are in [USER_STUDY.md](USER_STUDY.md). Results will only be added after the study is actually completed.
+
+## Privacy
+
+Uploaded documents, previews, feedback, and exports remain local in the default setup. Runtime files and databases are excluded from Git. More detail is available in [PRIVACY.md](PRIVACY.md).
 
 ## Current Limitations
 
-- Retrieval currently uses TF-IDF instead of dense semantic embeddings.
-- Answer generation is rule-based and template-guided in this version.
-- PDF extraction depends on the quality of the uploaded PDF.
-- Image-only diagrams cannot always be understood from text extraction alone, so the app adds a manual-review note where needed.
-- The domain modes can still be improved with stronger templates and better evaluation logic.
+- TF-IDF does not understand meaning as deeply as embedding-based retrieval.
+- Answers are extractive and template-guided, not generated by an LLM.
+- The support check is lexical and can miss paraphrases.
+- Image-only PDF pages and diagrams may need manual review.
+- The benchmark is small and based on included sample documents.
+- The API uses in-memory document storage and is not a production deployment.
 
-## Future Improvements
+## Next Steps
 
-- Add embedding-based retrieval with FAISS or Chroma.
-- Add optional LLM generation with stricter citations.
-- Add multi-document search across a full subject folder.
-- Add flashcards, quiz generation, and exam-preparation mode.
-- Improve research-paper and industrial-quality templates.
-- Add a cleaner deployment version for laptop or phone access.
-- Export polished PDF reports.
-
-## Resume Summary
-
-Built a Streamlit-based document intelligence assistant for PDF/TXT/Markdown files with source-grounded retrieval, PDF preview, extracted page text, local study library, study and decision-support modes, answer-quality evaluation, hallucination-risk indicators, and exportable JSON/CSV/Markdown reports.
+- Run the planned student study and report measured results.
+- Add dense retrieval and compare it against the TF-IDF baseline.
+- Add optional LLM generation with citations and strict fallback behavior.
+- Test a larger, more varied golden dataset.
+- Add persistent document metadata without storing sensitive source text by default.

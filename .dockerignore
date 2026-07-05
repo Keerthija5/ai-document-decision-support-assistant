@@ -1,0 +1,10 @@
+.git
+.github
+.app_cache
+.venv
+venv
+__pycache__
+*.pyc
+.DS_Store
+outputs
+static/pdf_cache

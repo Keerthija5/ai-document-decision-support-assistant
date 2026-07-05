@@ -1,0 +1,149 @@
+[
+  {
+    "id": "quality-01",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "What categories should the visual inspection workflow predict?",
+    "expected_keywords": ["accepted", "minor defect", "major defect"],
+    "answerable": true
+  },
+  {
+    "id": "quality-02",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "Which inputs and metadata are required?",
+    "expected_keywords": ["labelled product images", "batch number", "production station"],
+    "answerable": true
+  },
+  {
+    "id": "quality-03",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "What are the main implementation risks?",
+    "expected_keywords": ["poor image quality", "class imbalance", "lighting conditions"],
+    "answerable": true
+  },
+  {
+    "id": "quality-04",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "How should the prototype be evaluated?",
+    "expected_keywords": ["accuracy", "F1-score", "false negative rate"],
+    "answerable": true
+  },
+  {
+    "id": "quality-05",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "What pilot is recommended before expansion?",
+    "expected_keywords": ["controlled pilot", "one product family", "limited set"],
+    "answerable": true
+  },
+  {
+    "id": "quality-06",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "Why is human review necessary?",
+    "expected_keywords": ["low-confidence predictions", "human review"],
+    "answerable": true
+  },
+  {
+    "id": "quality-07",
+    "document": "industrial_ai_quality_use_case.txt",
+    "question": "What is the warranty period for the inspection camera?",
+    "expected_keywords": [],
+    "answerable": false
+  },
+  {
+    "id": "cost-01",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "What is the goal of the cost engineering assistant?",
+    "expected_keywords": ["reduce manual document review", "information easier to compare"],
+    "answerable": true
+  },
+  {
+    "id": "cost-02",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "Which data sources may be used?",
+    "expected_keywords": ["supplier quotations", "technical specifications", "historical benchmark data"],
+    "answerable": true
+  },
+  {
+    "id": "cost-03",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "Which outputs should the assistant generate?",
+    "expected_keywords": ["structured summary", "risks", "recommended next steps"],
+    "answerable": true
+  },
+  {
+    "id": "cost-04",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "What source-grounding risk is described?",
+    "expected_keywords": ["unsupported statements", "source grounding"],
+    "answerable": true
+  },
+  {
+    "id": "cost-05",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "Who should review the exported comparison table?",
+    "expected_keywords": ["engineering", "purchasing", "controlling"],
+    "answerable": true
+  },
+  {
+    "id": "cost-06",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "What should be prioritised in the first prototype?",
+    "expected_keywords": ["structured extraction", "traceability", "evaluation"],
+    "answerable": true
+  },
+  {
+    "id": "cost-07",
+    "document": "genai_cost_engineering_use_case.txt",
+    "question": "Which cloud provider hosts the supplier documents?",
+    "expected_keywords": [],
+    "answerable": false
+  },
+  {
+    "id": "medical-01",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "What documentation tasks should the assistant support?",
+    "expected_keywords": ["structuring notes", "extracting action items", "summarising"],
+    "answerable": true
+  },
+  {
+    "id": "medical-02",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "Which inputs are allowed for the prototype?",
+    "expected_keywords": ["anonymised clinical note examples", "workflow descriptions", "documentation guidelines"],
+    "answerable": true
+  },
+  {
+    "id": "medical-03",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "What information must not be stored?",
+    "expected_keywords": ["sensitive patient information"],
+    "answerable": true
+  },
+  {
+    "id": "medical-04",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "Which decisions must the assistant avoid?",
+    "expected_keywords": ["diagnosis", "treatment decisions"],
+    "answerable": true
+  },
+  {
+    "id": "medical-05",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "Which risks are considered critical?",
+    "expected_keywords": ["hallucination risk", "privacy risk", "missing context"],
+    "answerable": true
+  },
+  {
+    "id": "medical-06",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "How should the prototype be evaluated?",
+    "expected_keywords": ["source grounding", "completeness", "error analysis"],
+    "answerable": true
+  },
+  {
+    "id": "medical-07",
+    "document": "medical_ai_documentation_use_case.txt",
+    "question": "Which hospital purchased the prototype?",
+    "expected_keywords": [],
+    "answerable": false
+  }
+]

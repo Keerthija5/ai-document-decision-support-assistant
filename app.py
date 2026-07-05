@@ -10,13 +10,17 @@ import re
 import pandas as pd
 import streamlit as st
 
+from src.config import SETTINGS
 from src.document_loader import LoadedDocument, load_uploaded_file, normalise_text
 from src.evaluator import EvaluationResult, evaluate_answer
 from src.exporter import build_export_payload, matrix_to_csv, payload_to_json, payload_to_markdown, timestamped_name
+from src.feedback_store import FeedbackRecord, FeedbackStore
 from src.insight_extractor import build_decision_matrix, extract_insights, readiness_score
+from src.logging_config import configure_logging
 from src.rag_assistant import GroundedAnswer, answer_question
 from src.retriever import TfidfRetriever
 from src.text_chunker import chunk_text
+from src.validation import assess_question_support
 
 
 CACHE_DIR = Path(".app_cache")
@@ -24,6 +28,8 @@ DOCUMENT_CACHE_DIR = CACHE_DIR / "documents"
 RECENT_DOCUMENTS_PATH = CACHE_DIR / "recent_documents.json"
 STATIC_PDF_DIR = Path("static/pdf_cache")
 MAX_RECENT_DOCUMENTS = 5
+configure_logging()
+FEEDBACK_STORE = FeedbackStore(SETTINGS.feedback_database)
 
 ANALYSIS_MODES = {
     "Industrial AI / Quality": {
@@ -95,7 +101,12 @@ def init_state() -> None:
 
 
 def process_document(document: LoadedDocument) -> None:
-    chunks = chunk_text(document.name, document.text)
+    chunks = chunk_text(
+        document.name,
+        document.text,
+        max_words=SETTINGS.chunk_size,
+        overlap_words=SETTINGS.chunk_overlap,
+    )
     st.session_state.document = document
     st.session_state.chunks = chunks
     st.session_state.retriever = TfidfRetriever(chunks) if chunks else None
@@ -1108,7 +1119,12 @@ with tabs[1]:
             height=100,
         )
         st.caption(f"You can ask: {ANALYSIS_MODES[mode]['examples'][0]}")
-        top_k = st.slider("Number of source chunks", 2, 8, 5)
+        top_k = st.slider(
+            "Number of source chunks",
+            1,
+            SETTINGS.maximum_top_k,
+            SETTINGS.default_top_k,
+        )
         if st.button("Retrieve and answer", type="primary"):
             if not question.strip():
                 st.session_state.retrieved = []
@@ -1124,7 +1140,17 @@ with tabs[1]:
                     answer = answer_document_overview_question(question, st.session_state.document, retrieved)
                     answer_scope = "full_document"
                 else:
-                    answer = answer_question(question, retrieved)
+                    support = assess_question_support(
+                        question,
+                        st.session_state.document.text,
+                    )
+                    if not support.supported:
+                        retrieved = []
+                    answer = answer_question(
+                        question,
+                        retrieved,
+                        min_score=SETTINGS.minimum_retrieval_score,
+                    )
                     if not answer.sources and question_intent != "retrieval":
                         answer = answer_document_overview_question(question, st.session_state.document, retrieved)
                         answer_scope = "full_document"
@@ -1164,6 +1190,35 @@ with tabs[1]:
                         f"{source.document_name} | Chunk {source.chunk_id} | {confidence_label(source.score)} | score={source.score:.3f}"
                     ):
                         st.write(source.text)
+
+            document_record = st.session_state.document_record or {}
+            document_id = document_record.get("id")
+            if document_id:
+                with st.expander("Rate this answer"):
+                    with st.form(f"feedback_{document_id}_{hash(answer.question)}"):
+                        helpful_choice = st.radio(
+                            "Was this answer helpful?",
+                            ["Yes", "No"],
+                            horizontal=True,
+                        )
+                        correction = st.text_area(
+                            "Optional correction or comment",
+                            placeholder="What was missing, unclear, or incorrect?",
+                            max_chars=3000,
+                        )
+                        if st.form_submit_button("Submit feedback"):
+                            feedback_id = FEEDBACK_STORE.add(
+                                FeedbackRecord(
+                                    document_id=document_id,
+                                    question=answer.question,
+                                    helpful=helpful_choice == "Yes",
+                                    correction=correction,
+                                    evaluation=st.session_state.evaluation.to_dict()
+                                    if st.session_state.evaluation
+                                    else None,
+                                )
+                            )
+                            st.success(f"Feedback recorded locally (reference {feedback_id}).")
 
 with tabs[2]:
     st.subheader("Structured Decision Insights")

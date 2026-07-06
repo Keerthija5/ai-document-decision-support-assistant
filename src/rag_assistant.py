@@ -39,6 +39,10 @@ def answer_question(question: str, retrieved_chunks: list[RetrievedChunk], min_s
 def _detect_intent(question: str) -> set[str]:
     lower = question.lower()
     intent = set()
+    if any(term in lower for term in ("define ", "definition of", "meaning of")):
+        intent.add("definition")
+    if any(term in lower for term in ("types of", "kinds of", "forms of", "categories of", "classifications of")):
+        intent.add("list")
     if any(term in lower for term in ("explain", "simplified", "beginner", "summarise", "summarize", "what is")):
         intent.add("explanation")
     if any(term in lower for term in ("risk", "challenge", "limitation", "issue")):
@@ -55,6 +59,8 @@ def _detect_intent(question: str) -> set[str]:
 
 
 def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> str:
+    if intent & {"definition", "list"}:
+        return _compose_definition_and_list(question, intent, sentences)
     if "objective" in intent:
         objective_sentences = _select_by_terms(
             sentences,
@@ -90,6 +96,62 @@ def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> st
     if sections:
         return "\n\n".join(sections)
     return " ".join(_clean_sentence(sentence) for sentence in sentences[:4])
+
+
+def _compose_definition_and_list(
+    question: str,
+    intent: set[str],
+    sentences: list[str],
+) -> str:
+    subject = _question_subject(question)
+    cleaned = [
+        _remove_repeated_source_labels(
+            _remove_page_markers(_clean_sentence(sentence))
+        )
+        for sentence in sentences
+    ]
+    cleaned = [sentence for sentence in cleaned if sentence]
+    sections = []
+
+    if "definition" in intent:
+        definition = _find_definition(subject, cleaned)
+        if definition:
+            sections.append(f"Definition\n{definition}")
+        else:
+            sections.append(
+                "Definition\n"
+                "The retrieved pages do not contain a clear one-sentence definition. "
+                "Check the displayed source page before using a general definition."
+            )
+
+    if "list" in intent:
+        labels = _extract_type_labels(subject, cleaned)
+        if labels:
+            sections.append(
+                "Types mentioned in the document\n"
+                + "\n".join(f"- {label}" for label in labels)
+            )
+        else:
+            supporting = [
+                sentence
+                for sentence in cleaned
+                if subject in sentence.lower()
+                and any(term in sentence.lower() for term in ("type", "kind", "form", "category"))
+            ]
+            if supporting:
+                sections.append(
+                    "Types described in the document\n"
+                    + "\n".join(f"- {sentence}" for sentence in supporting[:4])
+                )
+            else:
+                sections.append(
+                    "Types\nNo clearly extractable list of types was found in the retrieved text."
+                )
+
+    sections.append(
+        "Source note\nThis answer is limited to the text extracted from the uploaded document."
+    )
+    return "\n\n".join(sections)
 
 
 def _compose_explanation(question: str, sentences: list[str]) -> str:
@@ -327,6 +389,104 @@ def _normalise_ranking_term(term: str) -> str:
     if len(term) > 4 and term.endswith("s"):
         return term[:-1]
     return term
+
+
+def _question_subject(question: str) -> str:
+    lower = question.lower()
+    patterns = (
+        r"(?:definition|meaning)\s+of\s+([a-z][a-z-]*)",
+        r"(?:types|kinds|forms|categories|classifications)\s+of\s+([a-z][a-z-]*)",
+        r"define\s+([a-z][a-z-]*)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, lower)
+        if match:
+            return match.group(1)
+    terms = [
+        term
+        for term in re.findall(r"[a-z][a-z-]+", lower)
+        if term not in {
+            "define",
+            "definition",
+            "meaning",
+            "types",
+            "kinds",
+            "forms",
+            "categories",
+            "classifications",
+            "and",
+            "of",
+            "the",
+        }
+    ]
+    return terms[0] if terms else ""
+
+
+def _find_definition(subject: str, sentences: list[str]) -> str:
+    if not subject:
+        return ""
+    explicit_markers = (" is ", " refers to ", " is defined as ", " occurs ", " during ")
+    candidates = [
+        sentence
+        for sentence in sentences
+        if subject in sentence.lower()
+        and any(marker in f" {sentence.lower()} " for marker in explicit_markers)
+        and "types of" not in sentence.lower()
+    ]
+    if not candidates:
+        return ""
+    candidates.sort(
+        key=lambda sentence: (
+            "defined as" in sentence.lower() or "refers to" in sentence.lower(),
+            -len(sentence.split()),
+        ),
+        reverse=True,
+    )
+    return candidates[0]
+
+
+def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
+    if not subject:
+        return []
+    combined = " ".join(sentences)
+    marker = re.search(
+        rf"(?:types|kinds|forms|categories|classifications)\s+of\s+{re.escape(subject)}",
+        combined,
+        flags=re.IGNORECASE,
+    )
+    search_text = combined[marker.start(): marker.start() + 1200] if marker else combined
+    matches = re.findall(
+        rf"\b([A-Za-z-]+(?:\s+(?:and|or)\s+[A-Za-z-]+)?\s+{re.escape(subject)})\b",
+        search_text,
+        flags=re.IGNORECASE,
+    )
+    blocked = {
+        f"of {subject}",
+        f"types {subject}",
+        f"during {subject}",
+        f"reduce {subject}",
+        f"reduces {subject}",
+        f"contact {subject}",
+    }
+    labels = []
+    for match in matches:
+        label = " ".join(match.split())
+        if label.lower() in blocked:
+            continue
+        label = label[0].upper() + label[1:]
+        if label.lower() not in {item.lower() for item in labels}:
+            labels.append(label)
+    return labels[:8]
+
+
+def _remove_repeated_source_labels(text: str) -> str:
+    text = re.sub(
+        r"(?:Prof\.?\s+)?[A-Z][A-Za-z-]+\s+Simulation of [A-Za-z ]+",
+        " ",
+        text,
+    )
+    text = re.sub(r"\bSource:\s*\[[^\]]+\]", " ", text, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", text).strip(" .:-")
 
 
 def _is_near_duplicate(terms: set[str], seen_terms: list[set[str]], threshold: float = 0.72) -> bool:

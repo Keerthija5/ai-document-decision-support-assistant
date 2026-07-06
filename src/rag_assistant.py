@@ -39,12 +39,30 @@ def answer_question(question: str, retrieved_chunks: list[RetrievedChunk], min_s
 def _detect_intent(question: str) -> set[str]:
     lower = question.lower()
     intent = set()
-    if any(term in lower for term in ("define ", "definition of", "meaning of")):
+    if re.search(r"\b(define|definition|meaning)\b", lower) or "what is" in lower:
         intent.add("definition")
-    if any(term in lower for term in ("types of", "kinds of", "forms of", "categories of", "classifications of")):
+    if re.search(
+        r"\b(type|types|kind|kinds|form|forms|category|categories|"
+        r"classification|classifications)\b",
+        lower,
+    ):
         intent.add("list")
     if any(term in lower for term in ("explain", "simplified", "beginner", "summarise", "summarize", "what is")):
         intent.add("explanation")
+    if re.search(r"\b(compare|comparison|differentiate|difference between|versus|vs\.?)\b", lower):
+        intent.add("comparison")
+    if re.search(r"\b(advantage|advantages|benefit|benefits|merit|merits)\b", lower):
+        intent.add("advantages")
+    if re.search(r"\b(disadvantage|disadvantages|drawback|drawbacks|demerit|demerits)\b", lower):
+        intent.add("disadvantages")
+    if re.search(r"\b(cause|causes|reason|reasons|why)\b", lower):
+        intent.add("causes")
+    if re.search(r"\b(effect|effects|impact|impacts|result|results)\b", lower):
+        intent.add("effects")
+    if re.search(r"\b(example|examples|application|applications|use case|use cases)\b", lower):
+        intent.add("examples")
+    if re.search(r"\b(how|steps|procedure|process|workflow|method)\b", lower):
+        intent.add("procedure")
     if any(term in lower for term in ("risk", "challenge", "limitation", "issue")):
         intent.add("risks")
     if any(term in lower for term in ("recommend", "next step", "action")):
@@ -61,6 +79,16 @@ def _detect_intent(question: str) -> set[str]:
 def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> str:
     if intent & {"definition", "list"}:
         return _compose_definition_and_list(question, intent, sentences)
+    if intent & {
+        "comparison",
+        "advantages",
+        "disadvantages",
+        "causes",
+        "effects",
+        "examples",
+        "procedure",
+    }:
+        return _compose_study_sections(intent, sentences)
     if "objective" in intent:
         objective_sentences = _select_by_terms(
             sentences,
@@ -96,6 +124,101 @@ def _compose_answer(question: str, intent: set[str], sentences: list[str]) -> st
     if sections:
         return "\n\n".join(sections)
     return " ".join(_clean_sentence(sentence) for sentence in sentences[:4])
+
+
+def _compose_study_sections(intent: set[str], sentences: list[str]) -> str:
+    section_terms = {
+        "comparison": (
+            "difference",
+            "whereas",
+            "while",
+            "compared",
+            "versus",
+            "unlike",
+        ),
+        "advantages": (
+            "advantage",
+            "benefit",
+            "useful",
+            "allows",
+            "improve",
+        ),
+        "disadvantages": (
+            "disadvantage",
+            "drawback",
+            "limitation",
+            "cost",
+            "difficult",
+        ),
+        "causes": (
+            "cause",
+            "caused",
+            "because",
+            "due to",
+            "reason",
+            "results from",
+        ),
+        "effects": (
+            "effect",
+            "impact",
+            "results in",
+            "leads to",
+            "therefore",
+        ),
+        "examples": (
+            "example",
+            "application",
+            "used in",
+            "such as",
+            "include",
+        ),
+        "procedure": (
+            "step",
+            "first",
+            "then",
+            "next",
+            "finally",
+            "procedure",
+            "process",
+        ),
+    }
+    headings = {
+        "comparison": "Comparison",
+        "advantages": "Advantages",
+        "disadvantages": "Disadvantages",
+        "causes": "Causes",
+        "effects": "Effects",
+        "examples": "Examples or applications",
+        "procedure": "Procedure",
+    }
+    sections = []
+    for name in (
+        "comparison",
+        "advantages",
+        "disadvantages",
+        "causes",
+        "effects",
+        "examples",
+        "procedure",
+    ):
+        if name not in intent:
+            continue
+        selected = _select_by_terms(sentences, section_terms[name])
+        if selected:
+            body = "\n".join(
+                f"- {_remove_page_markers(_clean_sentence(sentence))}"
+                for sentence in selected[:5]
+            )
+        else:
+            body = (
+                "- The retrieved text does not contain a clearly extractable "
+                f"{headings[name].lower()} section."
+            )
+        sections.append(f"{headings[name]}\n{body}")
+    sections.append(
+        "Source note\nThis answer is limited to the text extracted from the uploaded document."
+    )
+    return "\n\n".join(sections)
 
 
 def _compose_definition_and_list(
@@ -395,8 +518,10 @@ def _question_subject(question: str) -> str:
     lower = question.lower()
     patterns = (
         r"(?:definition|meaning)\s+of\s+([a-z][a-z-]*)",
-        r"(?:types|kinds|forms|categories|classifications)\s+of\s+([a-z][a-z-]*)",
+        r"(?:type|types|kind|kinds|form|forms|category|categories|"
+        r"classification|classifications)\s+of\s+([a-z][a-z-]*)",
         r"define\s+([a-z][a-z-]*)",
+        r"what\s+is\s+(?:an?\s+|the\s+)?([a-z][a-z-]*)",
     )
     for pattern in patterns:
         match = re.search(pattern, lower)
@@ -414,9 +539,14 @@ def _question_subject(question: str) -> str:
             "forms",
             "categories",
             "classifications",
+            "classification",
             "and",
             "of",
             "the",
+            "what",
+            "are",
+            "its",
+            "give",
         }
     ]
     return terms[0] if terms else ""
@@ -455,7 +585,7 @@ def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
         flags=re.IGNORECASE,
     )
     search_text = combined[marker.start(): marker.start() + 1200] if marker else combined
-    matches = re.findall(
+    inline_matches = re.findall(
         rf"\b([A-Za-z-]+(?:\s+(?:and|or)\s+[A-Za-z-]+)?\s+{re.escape(subject)})\b",
         search_text,
         flags=re.IGNORECASE,
@@ -466,12 +596,13 @@ def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
         search_text,
         flags=re.IGNORECASE,
     )
-    matches.extend(
+    matches = [
         heading
         if subject.lower() in heading.lower().split()
         else f"{heading} {subject}"
         for heading in heading_matches
-    )
+    ]
+    matches.extend(inline_matches)
     blocked = {
         f"of {subject}",
         f"types {subject}",
@@ -479,6 +610,12 @@ def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
         f"reduce {subject}",
         f"reduces {subject}",
         f"contact {subject}",
+        f"material {subject}",
+        f"loss {subject}",
+        f"surface {subject}",
+        f"motion {subject}",
+        f"progressive {subject}",
+        f"relative {subject}",
     }
     labels = []
     for match in matches:

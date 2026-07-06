@@ -43,3 +43,25 @@ def test_missing_explicit_definition_is_disclosed() -> None:
 
     assert "do not contain a clear one-sentence definition" in result.answer
     assert "- Boundary friction" in result.answer
+
+
+def test_type_headings_after_repeated_section_labels_are_extracted() -> None:
+    source = RetrievedChunk(
+        document_name="wear.pdf",
+        chunk_id=5,
+        score=0.8,
+        text=(
+            "Types of wear Adhesion: Adhesion occurs on a sliding surface. "
+            "Types of wear Abrasion: Typical mechanism for hard-soft contact. "
+            "Types of wear Tribochemical wear: It can be caused by corrosion."
+        ),
+    )
+
+    result = answer_question(
+        "Definition of wear and types of wear",
+        [source],
+    )
+
+    assert "- Adhesion wear" in result.answer
+    assert "- Abrasion wear" in result.answer
+    assert "- Tribochemical wear" in result.answer

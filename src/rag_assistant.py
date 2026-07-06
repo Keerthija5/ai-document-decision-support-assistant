@@ -460,6 +460,18 @@ def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
         search_text,
         flags=re.IGNORECASE,
     )
+    heading_matches = re.findall(
+        rf"(?:types|kinds|forms|categories|classifications)\s+of\s+"
+        rf"{re.escape(subject)}\s+([A-Za-z][A-Za-z-]*(?:\s+[A-Za-z][A-Za-z-]*){{0,2}})\s*:",
+        search_text,
+        flags=re.IGNORECASE,
+    )
+    matches.extend(
+        heading
+        if subject.lower() in heading.lower().split()
+        else f"{heading} {subject}"
+        for heading in heading_matches
+    )
     blocked = {
         f"of {subject}",
         f"types {subject}",

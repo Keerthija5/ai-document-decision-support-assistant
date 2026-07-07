@@ -67,6 +67,51 @@ def test_type_headings_after_repeated_section_labels_are_extracted() -> None:
     assert "- Tribochemical wear" in result.answer
 
 
+def test_subtype_explanation_is_not_used_as_main_definition() -> None:
+    source = RetrievedChunk(
+        document_name="wear.pdf",
+        chunk_id=5,
+        score=0.8,
+        text=(
+            "Types of wear Tribochemical wear: The most common tribochemical wear is caused by corrosion. "
+            "Types of wear Adhesion: Adhesion on the sliding surface of a journal bearing. "
+            "Types of wear Abrasion: Typical mechanism for hard-soft contact."
+        ),
+    )
+
+    result = answer_question("Define wear and list types of wear", [source])
+
+    assert "do not contain a clear one-sentence definition" in result.answer
+    assert "Definition\nTribochemical wear" not in result.answer
+    assert "- Tribochemical wear" in result.answer
+    assert "- Adhesion wear" in result.answer
+    assert "- Abrasion wear" in result.answer
+
+
+def test_broken_type_fragments_are_filtered_out() -> None:
+    source = RetrievedChunk(
+        document_name="wear.pdf",
+        chunk_id=7,
+        score=0.8,
+        text=(
+            "Wear Types of wear Tribochemical wear: corrosion damage. "
+            "Fatigue wear can occur under repeated loading. "
+            "Abrasive wear happens with hard particles. "
+            "For wear analysis this wear is discussed on wear surfaces."
+        ),
+    )
+
+    result = answer_question("Define wear and list types of wear", [source])
+
+    assert "- Tribochemical wear" in result.answer
+    assert "- Fatigue wear" in result.answer
+    assert "- Abrasive wear" in result.answer
+    assert "- For wear" not in result.answer
+    assert "- Ing wear" not in result.answer
+    assert "- This wear" not in result.answer
+    assert "- On wear" not in result.answer
+
+
 def test_natural_define_and_types_wording_uses_structured_answer() -> None:
     source = RetrievedChunk(
         document_name="wear.pdf",

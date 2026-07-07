@@ -555,13 +555,17 @@ def _question_subject(question: str) -> str:
 def _find_definition(subject: str, sentences: list[str]) -> str:
     if not subject:
         return ""
-    explicit_markers = (" is ", " refers to ", " is defined as ", " occurs ", " during ")
+    subject_pattern = re.compile(
+        rf"^\s*(?:{re.escape(subject)}|the\s+term\s+{re.escape(subject)})\s+"
+        r"(?:is|refers to|is defined as|means)\b",
+        flags=re.IGNORECASE,
+    )
     candidates = [
         sentence
         for sentence in sentences
-        if subject in sentence.lower()
-        and any(marker in f" {sentence.lower()} " for marker in explicit_markers)
+        if subject_pattern.search(sentence)
         and "types of" not in sentence.lower()
+        and ":" not in sentence[: max(18, len(subject) + 12)]
     ]
     if not candidates:
         return ""
@@ -578,31 +582,51 @@ def _find_definition(subject: str, sentences: list[str]) -> str:
 def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
     if not subject:
         return []
-    combined = " ".join(sentences)
-    marker = re.search(
-        rf"(?:types|kinds|forms|categories|classifications)\s+of\s+{re.escape(subject)}",
-        combined,
-        flags=re.IGNORECASE,
-    )
-    search_text = combined[marker.start(): marker.start() + 1200] if marker else combined
-    inline_matches = re.findall(
-        rf"\b([A-Za-z-]+(?:\s+(?:and|or)\s+[A-Za-z-]+)?\s+{re.escape(subject)})\b",
-        search_text,
-        flags=re.IGNORECASE,
-    )
-    heading_matches = re.findall(
-        rf"(?:types|kinds|forms|categories|classifications)\s+of\s+"
-        rf"{re.escape(subject)}\s+([A-Za-z][A-Za-z-]*(?:\s+[A-Za-z][A-Za-z-]*){{0,2}})\s*:",
-        search_text,
-        flags=re.IGNORECASE,
-    )
-    matches = [
-        heading
-        if subject.lower() in heading.lower().split()
-        else f"{heading} {subject}"
-        for heading in heading_matches
-    ]
-    matches.extend(inline_matches)
+    matches = []
+    for sentence in sentences:
+        sentence = _normalise_extracted_text(sentence)
+        if subject.lower() not in sentence.lower():
+            continue
+
+        heading_matches = re.findall(
+            rf"(?:types|kinds|forms|categories|classifications)\s+of\s+"
+            rf"{re.escape(subject)}\s+([A-Za-z][A-Za-z-]*(?:\s+[A-Za-z][A-Za-z-]*){{0,1}})\s*:",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+        matches.extend(
+            heading
+            if subject.lower() in heading.lower().split()
+            else f"{heading} {subject}"
+            for heading in heading_matches
+        )
+
+        list_match = re.search(
+            rf"(?:include|includes|including|are|is|:)\s+(.+)$",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+        if list_match and re.search(
+            rf"(?:types|kinds|forms|categories|classifications)\s+of\s+{re.escape(subject)}",
+            sentence,
+            flags=re.IGNORECASE,
+        ):
+            list_part = re.split(r"\b(?:based on|depending on|source)\b", list_match.group(1), maxsplit=1, flags=re.IGNORECASE)[0]
+            for item in re.split(r",|;|\band\b|\bor\b", list_part):
+                inline = re.search(
+                    rf"\b([A-Za-z-]+(?:\s+[A-Za-z-]+)?\s+{re.escape(subject)})\b",
+                    item,
+                    flags=re.IGNORECASE,
+                )
+                if inline:
+                    matches.append(inline.group(1))
+
+        inline_matches = re.findall(
+            rf"\b([A-Za-z-]+(?:\s+[A-Za-z-]+)?\s+{re.escape(subject)})\b",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+        matches.extend(inline_matches)
     blocked = {
         f"of {subject}",
         f"types {subject}",
@@ -617,15 +641,67 @@ def _extract_type_labels(subject: str, sentences: list[str]) -> list[str]:
         f"progressive {subject}",
         f"relative {subject}",
     }
+    blocked_prefixes = {
+        "a",
+        "analysis",
+        "an",
+        "and",
+        "are",
+        "as",
+        "based",
+        "by",
+        "can",
+        "common",
+        "contact",
+        "contacts",
+        "during",
+        "discussed",
+        "example",
+        "for",
+        "from",
+        "in",
+        "ing",
+        "into",
+        "is",
+        "loss",
+        "material",
+        "motion",
+        "most",
+        "of",
+        "on",
+        "or",
+        "source",
+        "surface",
+        "the",
+        "this",
+        "to",
+        "types",
+        "wear",
+        "with",
+    }
     labels = []
     for match in matches:
         label = " ".join(match.split())
-        if label.lower() in blocked:
+        label_lower = label.lower()
+        label_words = label_lower.split()
+        if label_lower in blocked:
+            continue
+        if not label_words or label_words[-1] != subject.lower():
+            continue
+        if len(label_words) < 2 or len(label_words) > 3:
+            continue
+        if any(word in blocked_prefixes for word in label_words[:-1]):
             continue
         label = label[0].upper() + label[1:]
         if label.lower() not in {item.lower() for item in labels}:
             labels.append(label)
     return labels[:8]
+
+
+def _normalise_extracted_text(text: str) -> str:
+    text = text.replace("\uFFFD", " ")
+    text = text.replace("□", " ")
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _remove_repeated_source_labels(text: str) -> str:

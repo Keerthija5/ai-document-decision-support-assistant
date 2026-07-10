@@ -55,9 +55,9 @@ def validate_document_input(filename: str, content: bytes, settings: Settings) -
     if not filename.strip():
         raise InputValidationError("A document filename is required.", "missing_filename")
     suffix = Path(filename).suffix.lower()
-    if suffix not in {".pdf", ".txt", ".md"}:
+    if suffix not in {".pdf", ".txt", ".md", ".docx", ".png", ".jpg", ".jpeg"}:
         raise InputValidationError(
-            "Unsupported file type. Upload a PDF, TXT, or Markdown document.",
+            "Unsupported file type. Upload a PDF, Word document, image, TXT, or Markdown document.",
             "unsupported_file_type",
         )
     if not content:

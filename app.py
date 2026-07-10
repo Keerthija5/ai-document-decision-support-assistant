@@ -1007,7 +1007,10 @@ tabs = st.tabs(["Upload & Preview", "Ask Assistant", "Decision Insights", "Evalu
 
 with tabs[0]:
     st.markdown("#### Upload Study Material")
-    uploaded_file = st.file_uploader("Upload PDF, TXT, or MD", type=["pdf", "txt", "md"])
+    uploaded_file = st.file_uploader(
+        "Upload PDF, Word, image, TXT, or MD",
+        type=["pdf", "docx", "png", "jpg", "jpeg", "txt", "md"],
+    )
     if uploaded_file is not None and st.button("Process uploaded document", type="primary"):
         try:
             file_bytes = uploaded_file.getvalue()

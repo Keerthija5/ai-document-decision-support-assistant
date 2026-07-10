@@ -20,9 +20,14 @@ class ValidationTests(unittest.TestCase):
     def test_accepts_supported_text_document(self) -> None:
         validate_document_input("notes.txt", b"enough content", self.settings)
 
+    def test_accepts_word_and_image_documents(self) -> None:
+        validate_document_input("notes.docx", b"fake docx bytes", self.settings)
+        validate_document_input("slide.png", b"fake image bytes", self.settings)
+        validate_document_input("photo.jpeg", b"fake image bytes", self.settings)
+
     def test_rejects_unsupported_extension(self) -> None:
         with self.assertRaises(InputValidationError) as context:
-            validate_document_input("notes.docx", b"content", self.settings)
+            validate_document_input("notes.xlsx", b"content", self.settings)
         self.assertEqual(context.exception.code, "unsupported_file_type")
 
     def test_rejects_short_extracted_text(self) -> None:

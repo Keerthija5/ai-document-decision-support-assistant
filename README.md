@@ -2,9 +2,11 @@
 
 I started this project because I wanted a better way to work through long lecture PDFs. Finding a sentence was not enough: I wanted to ask a question, see the source behind the answer, and know when the document did not contain enough evidence.
 
-The project grew into a local document-analysis prototype for study material and workplace-style documents. It now has a Streamlit interface, a reusable Python service, a REST API, answer-quality checks, local feedback collection, a regression benchmark, tests, Docker support, and CI.
+The project grew into a local document-analysis prototype for study material and workplace-style documents. It now has a Streamlit interface, a reusable Python service, a REST API, answer-quality checks, local feedback collection, a privacy-aware archive for metadata and evaluation traces, a regression benchmark, tests, Docker support, and CI.
 
 After sharing the app with a few classmates, I noticed a real problem: many lecture PDFs are not clean text files. They often contain screenshots, scanned pages, diagrams, or slides where the important definition is inside an image. I added DOCX and image upload support, plus OCR fallback for screenshot-heavy PDFs, so the assistant can handle more of the study material students actually use.
+
+I also added a small archive layer because I wanted the project to be reviewable after a session. The archive saves document metadata, retrieval traces, and evaluation results, but not the raw uploaded document text. That keeps the default setup safer for lecture notes or personal files while still giving enough information to debug and improve the system.
 
 The current version deliberately uses transparent TF-IDF retrieval and extractive, template-guided answers. It does not call a hosted LLM API, so documents stay local and the answer path is easier to inspect.
 
@@ -34,6 +36,8 @@ The same workflow can also be used to inspect AI use-case proposals, research no
 - Extracts risks, requirements, recommendations, action items, and missing information.
 - Evaluates relevance, completeness, grounding, consistency, and review risk.
 - Stores helpful / not-helpful feedback and optional corrections in local SQLite.
+- Stores privacy-aware document metadata and query-evaluation traces in a local archive.
+- Supports optional S3-compatible archiving for metadata and evaluation records when cloud storage is explicitly configured.
 - Exports JSON, CSV, and Markdown reports.
 - Exposes ingestion, query, evaluation, insight, and feedback endpoints through FastAPI.
 
@@ -78,10 +82,34 @@ Intent-aware extractive answer
    |
 Grounding and quality evaluation
    |
-Sources, feedback, insights, and exports
+Sources, feedback, insights, archive records, and exports
 ```
 
 The Streamlit app and API share the same configuration and core processing modules. Operational logs include IDs, counts, latency, and review status, but not document contents.
+
+## Local Archive and Optional S3 Storage
+
+By default, the assistant writes small JSON archive records under `.app_cache/archive/`. I added this so I can inspect what happened after a query without keeping a full private copy of the uploaded document.
+
+The archive stores:
+
+- document ID, file name, source type, word count, and chunk count
+- insight counts such as number of risks, requirements, recommendations, and missing-information items
+- query evaluation metrics, retrieval scores, source chunk IDs, latency, and review status
+
+The archive does not store raw uploaded document text. Full question text is also disabled by default; only a question hash is stored. If I need full local debugging, I can turn it on with `RAG_ARCHIVE_QUERY_TEXT=true`.
+
+For a cloud-style setup, the same metadata archive can be sent to S3:
+
+```bash
+pip install -r requirements-cloud.txt
+export RAG_STORAGE_BACKEND=s3
+export RAG_S3_BUCKET=your-bucket-name
+export RAG_S3_PREFIX=document-intelligence
+uvicorn api:app --reload
+```
+
+I kept this optional because S3 is useful for review records and exported results, but it should not be required for a classmate who only wants to upload a lecture PDF locally.
 
 ## Controlled Evaluation
 
@@ -136,6 +164,8 @@ Main endpoints:
 
 Documents are held in memory for the current API process. This keeps the prototype simple, but it means document IDs do not survive an API restart.
 
+The health endpoint also reports the active archive backend and whether S3 is configured.
+
 ## Run the Streamlit App
 
 ```bash
@@ -182,6 +212,7 @@ src/
   evaluator.py                 Answer-quality checks
   insight_extractor.py         Structured decision fields
   feedback_store.py            Local SQLite feedback
+  storage.py                   Local/S3 metadata archive for review traces
   logging_config.py            Privacy-aware operational logging
   exporter.py                  JSON/CSV/Markdown reports
 ```
@@ -211,4 +242,4 @@ Uploaded documents, previews, feedback, and exports remain local in the default 
 - Add dense retrieval and compare it against the TF-IDF baseline.
 - Add optional LLM generation with citations and strict fallback behavior.
 - Test a larger, more varied golden dataset.
-- Add persistent document metadata without storing sensitive source text by default.
+- Expand the metadata archive into a small review dashboard for feedback and failure analysis.

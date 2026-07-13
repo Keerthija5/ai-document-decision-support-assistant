@@ -15,6 +15,11 @@ class Settings:
     maximum_file_size_mb: int = 10
     minimum_document_words: int = 20
     feedback_database: Path = Path(".app_cache/feedback.db")
+    storage_backend: str = "local"
+    archive_directory: Path = Path(".app_cache/archive")
+    archive_query_text: bool = False
+    s3_bucket: str = ""
+    s3_prefix: str = "document-intelligence"
 
     @property
     def maximum_file_size_bytes(self) -> int:
@@ -31,6 +36,11 @@ def load_settings() -> Settings:
         maximum_file_size_mb=int(os.getenv("RAG_MAX_FILE_MB", "10")),
         minimum_document_words=int(os.getenv("RAG_MIN_DOCUMENT_WORDS", "20")),
         feedback_database=Path(os.getenv("RAG_FEEDBACK_DB", ".app_cache/feedback.db")),
+        storage_backend=os.getenv("RAG_STORAGE_BACKEND", "local").lower(),
+        archive_directory=Path(os.getenv("RAG_ARCHIVE_DIR", ".app_cache/archive")),
+        archive_query_text=os.getenv("RAG_ARCHIVE_QUERY_TEXT", "false").lower() == "true",
+        s3_bucket=os.getenv("RAG_S3_BUCKET", ""),
+        s3_prefix=os.getenv("RAG_S3_PREFIX", "document-intelligence").strip("/"),
     )
 
 

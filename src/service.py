@@ -12,6 +12,7 @@ from src.insight_extractor import DecisionInsights, build_decision_matrix, extra
 from src.logging_config import Timer
 from src.rag_assistant import GroundedAnswer, answer_question
 from src.retriever import RetrievedChunk, TfidfRetriever
+from src.storage import ArchiveStore
 from src.text_chunker import TextChunk, chunk_text
 from src.validation import (
     InputValidationError,
@@ -36,6 +37,7 @@ class DocumentRecord:
     retriever: TfidfRetriever
     insights: DecisionInsights
     decision_matrix: list[dict]
+    archive_location: str = ""
 
     def metadata(self) -> dict:
         return {
@@ -44,6 +46,7 @@ class DocumentRecord:
             "source_type": self.source_type,
             "word_count": len(self.text.split()),
             "chunk_count": len(self.chunks),
+            "archive_location": self.archive_location,
         }
 
 
@@ -57,12 +60,14 @@ class QueryResult:
     question_support: dict
     evaluation: dict
     query_latency_ms: float
+    archive_location: str = ""
 
 
 class DocumentService:
     def __init__(self, settings: Settings = SETTINGS):
         self.settings = settings
         self.documents: dict[str, DocumentRecord] = {}
+        self.archive_store = ArchiveStore(settings)
 
     def add_upload(self, filename: str, content: bytes) -> DocumentRecord:
         validate_document_input(filename, content, self.settings)
@@ -112,6 +117,14 @@ class DocumentService:
                 grounded_answer.sources,
                 grounded_answer.missing_information,
             )
+            archive_location = self._archive_query(
+                document,
+                cleaned_question,
+                grounded_answer,
+                support,
+                evaluation,
+                round(timer.elapsed_ms, 2),
+            )
 
         logger.info(
             "query_completed",
@@ -133,6 +146,7 @@ class DocumentService:
             question_support=asdict(support),
             evaluation=evaluation.to_dict(),
             query_latency_ms=round(timer.elapsed_ms, 2),
+            archive_location=archive_location,
         )
 
     def _add_document(self, document: LoadedDocument, content: bytes) -> DocumentRecord:
@@ -155,6 +169,7 @@ class DocumentService:
             decision_matrix=[],
         )
         record.decision_matrix = build_decision_matrix(record.insights)
+        record.archive_location = self._archive_document(record)
         self.documents[document_id] = record
         logger.info(
             "document_processed",
@@ -166,3 +181,70 @@ class DocumentService:
             },
         )
         return record
+
+    def _archive_document(self, record: DocumentRecord) -> str:
+        payload = {
+            "record_type": "document_metadata",
+            "document": {
+                "document_id": record.document_id,
+                "name": record.name,
+                "source_type": record.source_type,
+                "word_count": len(record.text.split()),
+                "chunk_count": len(record.chunks),
+            },
+            "insight_summary": {
+                "requirements": len(record.insights.requirements),
+                "risks": len(record.insights.risks),
+                "recommendations": len(record.insights.recommendations),
+                "missing_information": len(record.insights.missing_information),
+            },
+        }
+        try:
+            result = self.archive_store.save_json("documents", record.document_id, payload)
+            return result.location
+        except Exception as exc:
+            logger.warning(
+                "document_archive_failed",
+                extra={"document_id": record.document_id, "reason": str(exc)},
+            )
+            return ""
+
+    def _archive_query(
+        self,
+        document: DocumentRecord,
+        question: str,
+        grounded_answer: GroundedAnswer,
+        support,
+        evaluation: EvaluationResult,
+        latency_ms: float,
+    ) -> str:
+        question_hash = hashlib.sha256(question.encode("utf-8")).hexdigest()[:16]
+        query_record_id = f"{document.document_id}-{question_hash}"
+        payload = {
+            "record_type": "query_evaluation",
+            "document": document.metadata(),
+            "question_hash": question_hash,
+            "question": question if self.settings.archive_query_text else "",
+            "source_count": len(grounded_answer.sources),
+            "source_trace": [
+                {
+                    "document_name": source.document_name,
+                    "chunk_id": source.chunk_id,
+                    "score": round(source.score, 4),
+                }
+                for source in grounded_answer.sources
+            ],
+            "missing_information": grounded_answer.missing_information,
+            "question_support": asdict(support),
+            "evaluation": evaluation.to_dict(),
+            "query_latency_ms": latency_ms,
+        }
+        try:
+            result = self.archive_store.save_json("queries", query_record_id, payload)
+            return result.location
+        except Exception as exc:
+            logger.warning(
+                "query_archive_failed",
+                extra={"document_id": document.document_id, "reason": str(exc)},
+            )
+            return ""

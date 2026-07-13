@@ -70,6 +70,7 @@ def health() -> dict:
         "version": app.version,
         "retrieval": "tfidf",
         "documents_in_memory": len(service.documents),
+        "archive": service.archive_store.status(),
     }
 
 

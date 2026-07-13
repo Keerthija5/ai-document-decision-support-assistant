@@ -53,6 +53,24 @@ class ServiceTests(unittest.TestCase):
             )
             self.assertEqual(store.summary()["helpful_feedback"], 1)
 
+    def test_archives_metadata_without_raw_document_text(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            service = DocumentService(
+                Settings(
+                    minimum_document_words=10,
+                    archive_directory=Path(directory) / "archive",
+                )
+            )
+            document = service.add_text("quality.txt", SAMPLE_TEXT)
+            result = service.query(document.document_id, "What are the main risks?")
+
+            document_archive = Path(document.archive_location)
+            query_archive = Path(result.archive_location)
+            self.assertTrue(document_archive.exists())
+            self.assertTrue(query_archive.exists())
+            self.assertNotIn("labelled product images", document_archive.read_text(encoding="utf-8"))
+            self.assertNotIn("labelled product images", query_archive.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

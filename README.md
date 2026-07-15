@@ -1,8 +1,8 @@
-# AI-Powered Document Intelligence & Decision Support Assistant
+# Document Intelligence and Study Support Assistant
 
 I started this project because I wanted a better way to work through long lecture PDFs. Finding a sentence was not enough: I wanted to ask a question, see the source behind the answer, and know when the document did not contain enough evidence.
 
-The project grew into a local document-analysis prototype for study material and workplace-style documents. I kept it split into a Streamlit app, reusable Python service code, and a small FastAPI layer so the same logic can be tested from the UI and from API endpoints. It also includes answer-quality checks, local feedback collection, a privacy-aware archive for metadata and evaluation traces, a regression benchmark, Docker support, and GitHub Actions tests.
+The project grew into a local document-analysis prototype for study material and workplace-style documents. I kept it split into a Streamlit app, reusable Python service code, and a small FastAPI layer so the same logic can be tested from the UI and from API endpoints. It also includes answer-quality checks, local feedback collection, a local metadata archive for evaluation traces, a small regression test set, Docker support, and GitHub Actions tests.
 
 After sharing the app with a few classmates, I noticed a real problem: many lecture PDFs are not clean text files. They often contain screenshots, scanned pages, diagrams, or slides where the important definition is inside an image. I added DOCX and image upload support, plus OCR fallback for screenshot-heavy PDFs, so the assistant can handle more of the study material students actually use.
 
@@ -37,7 +37,7 @@ The same workflow can also be used to inspect AI use-case proposals, research no
 - Extracts risks, requirements, recommendations, action items, and missing information.
 - Evaluates relevance, completeness, grounding, consistency, and review risk.
 - Stores helpful / not-helpful feedback and optional corrections in local SQLite.
-- Stores privacy-aware document metadata and query-evaluation traces in a local archive.
+- Stores document metadata and query-evaluation traces in a local archive without saving the uploaded document text.
 - Keeps the archive local by default, with an optional S3-compatible path only when it is explicitly configured.
 - Exports JSON, CSV, and Markdown reports.
 - Exposes ingestion, query, evaluation, insight, and feedback endpoints through FastAPI.
@@ -86,7 +86,7 @@ Grounding and quality evaluation
 Sources, feedback, insights, archive records, and exports
 ```
 
-The Streamlit app and API share the same configuration and core processing modules. Operational logs include IDs, counts, latency, and review status, but not document contents.
+The Streamlit app and API share the same configuration and core processing modules. Logs include IDs, counts, latency, and review status, but not document contents.
 
 ## Local Review Archive
 
@@ -114,7 +114,7 @@ I kept this optional because the main purpose of the project is still local stud
 
 ## Controlled Evaluation
 
-I created a small golden dataset with 21 questions across three included sample documents:
+I created a small evaluation set with 21 questions across three included sample documents:
 
 - 18 answerable questions
 - 3 intentionally unanswerable questions
@@ -134,7 +134,7 @@ These numbers are useful for catching regressions in the included examples. They
 
 I also added regression tests after real feedback from classmates, especially around study questions like definitions and type lists. This helped catch cases where messy PDF extraction could produce broken labels or unsupported answers.
 
-Run the benchmark with:
+Run the evaluation with:
 
 ```bash
 python run_evaluation.py
@@ -198,8 +198,8 @@ docker run --rm -p 8000:8000 document-intelligence-api
 ```text
 app.py                         Streamlit interface
 api.py                         FastAPI endpoints
-run_evaluation.py              Golden-set benchmark runner
-evaluation_data/               Questions and recorded benchmark result
+run_evaluation.py              Small evaluation runner
+evaluation_data/               Questions and recorded evaluation result
 data/sample_documents/         Non-sensitive evaluation documents
 tests/                         Unit and API tests
 src/
@@ -214,7 +214,7 @@ src/
   insight_extractor.py         Structured decision fields
   feedback_store.py            Local SQLite feedback
   storage.py                   Local metadata archive with optional S3-compatible path
-  logging_config.py            Privacy-aware operational logging
+  logging_config.py            Logging setup without saving document contents
   exporter.py                  JSON/CSV/Markdown reports
 ```
 
@@ -235,7 +235,7 @@ Uploaded documents, previews, feedback, and exports remain local in the default 
 - The support check is lexical and can miss paraphrases.
 - Study Notes mode is a revision helper based on extracted text, not a complete tutor for diagrams or missing visual context.
 - OCR can read many screenshot-based slides and scanned pages, but complex charts, diagrams, handwriting, and low-quality images may still need manual review.
-- The benchmark is small and based on included sample documents.
+- The evaluation set is small and based on included sample documents.
 - The API uses in-memory document storage, so it is still a learning prototype rather than a deployed product.
 
 ## Next Steps
@@ -243,5 +243,5 @@ Uploaded documents, previews, feedback, and exports remain local in the default 
 - Run the planned student study and report measured results.
 - Add dense retrieval and compare it against the TF-IDF baseline.
 - Add optional LLM generation with citations and strict fallback behavior.
-- Test a larger, more varied golden dataset.
+- Test a larger, more varied evaluation set.
 - Expand the metadata archive into a small review dashboard for feedback and failure analysis.

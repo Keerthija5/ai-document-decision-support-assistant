@@ -71,6 +71,25 @@ class ServiceTests(unittest.TestCase):
             self.assertNotIn("labelled product images", document_archive.read_text(encoding="utf-8"))
             self.assertNotIn("labelled product images", query_archive.read_text(encoding="utf-8"))
 
+    def test_s3_archive_is_optional_and_falls_back_to_local_without_bucket(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            service = DocumentService(
+                Settings(
+                    minimum_document_words=10,
+                    storage_backend="s3",
+                    archive_directory=Path(directory) / "archive",
+                    s3_bucket="",
+                )
+            )
+
+            document = service.add_text("quality.txt", SAMPLE_TEXT)
+            status = service.archive_store.status()
+
+            self.assertEqual(status["requested_backend"], "s3")
+            self.assertEqual(status["active_backend"], "local")
+            self.assertFalse(status["s3_ready"])
+            self.assertTrue(Path(document.archive_location).exists())
+
 
 if __name__ == "__main__":
     unittest.main()

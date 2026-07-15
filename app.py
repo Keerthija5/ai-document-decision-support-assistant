@@ -1115,6 +1115,11 @@ with tabs[1]:
     else:
         mode = st.radio("Analysis mode", list(ANALYSIS_MODES), horizontal=True)
         st.caption(ANALYSIS_MODES[mode]["description"])
+        if mode == "Study Notes":
+            st.info(
+                "Study mode explains the text the app can extract from the document. "
+                "For diagrams, charts, handwritten notes, or unclear screenshots, use the PDF preview to double-check the original page."
+            )
         question = st.text_area(
             "Question",
             value="",

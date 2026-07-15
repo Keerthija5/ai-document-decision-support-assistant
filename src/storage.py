@@ -23,9 +23,11 @@ class ArchiveStore:
 
     def status(self) -> dict[str, str | bool]:
         return {
-            "backend": self.settings.storage_backend,
+            "requested_backend": self.settings.storage_backend,
+            "active_backend": self._active_backend(),
             "local_directory": str(self.settings.archive_directory),
             "s3_bucket_configured": bool(self.settings.s3_bucket),
+            "s3_ready": self._s3_enabled(),
             "stores_raw_document_text": False,
             "stores_full_query_text": self.settings.archive_query_text,
         }
@@ -40,9 +42,15 @@ class ArchiveStore:
             **payload,
         }
         filename = f"{_safe_name(record_id)}.json"
-        if self.settings.storage_backend == "s3":
+        if self._s3_enabled():
             return self._save_s3(folder, filename, safe_payload)
         return self._save_local(folder, filename, safe_payload)
+
+    def _s3_enabled(self) -> bool:
+        return self.settings.storage_backend == "s3" and bool(self.settings.s3_bucket)
+
+    def _active_backend(self) -> str:
+        return "s3" if self._s3_enabled() else "local"
 
     def _save_local(self, folder: str, filename: str, payload: dict[str, Any]) -> StorageResult:
         target_dir = self.settings.archive_directory / _safe_name(folder)

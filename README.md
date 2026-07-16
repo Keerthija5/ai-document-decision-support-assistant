@@ -42,6 +42,10 @@ The same workflow can also be used to inspect AI use-case proposals, research no
 - Exports JSON, CSV, and Markdown reports.
 - Exposes ingestion, query, evaluation, insight, and feedback endpoints through FastAPI.
 
+## Checked in This Version
+
+I tested the current workflow with lecture-style PDFs, pasted text documents, PDF preview, extracted page text, OCR fallback, source-grounded questions, unsupported-question refusal, local feedback recording, and API endpoints. The included evaluation set has 21 sample questions across three non-sensitive documents, including 3 intentionally unsupported questions.
+
 ## Screenshots
 
 ### Upload and Study Library
